@@ -689,26 +689,31 @@
               [[:db/retract id :initiative/suffix]
                [:db/retract id :initiative/roll]
                [:db/retract id :initiative/health]
+               [:db/retract id :initiative/declared-action]
+               [:db/retract id :initiative/defence]
                [:db/retract scene :scene/initiative id]
                [:db/retract scene :initiative/played id]])))))
 
 (defmethod event-tx-fn :initiative/next
   [data]
-  (let [user (ds/entity data [:db/ident :user])
-        scene (:camera/scene (:user/camera user))
-        {rounds :initiative/rounds
-         tokens :scene/initiative
-         played :initiative/played} scene]
-    (if (some? rounds)
-      (let [[next] (sort initiative-order (difference tokens played))]
-        (if (some? next)
-          [{:db/id (:db/id scene)
-            :initiative/turn (:db/id next)
-            :initiative/played (:db/id next)}]
-          [[:db/retract (:db/id scene) :initiative/played]
-           [:db/retract (:db/id scene) :initiative/turn]
-           {:db/id (:db/id scene) :initiative/rounds (inc rounds)}]))
-      [{:db/id (:db/id scene) :initiative/rounds 1}])))
+  (let [user     (ds/entity data [:db/ident :user])
+        scene    (:camera/scene (:user/camera user))
+        rounds   (:initiative/rounds scene)
+        phase    (or (:initiative/phase scene) 0)
+        scene-id (:db/id scene)]
+    (if (nil? rounds)
+      ;; Start initiative — begin Round 1 at Assessment (phase 0)
+      [{:db/id scene-id :initiative/rounds 1 :initiative/phase 0}]
+      ;; Advance through the 9 TRS phases (0–8), then wrap to new round
+      (if (< phase 8)
+        [[:db/retract scene-id :initiative/played]
+         [:db/retract scene-id :initiative/turn]
+         {:db/id scene-id :initiative/phase (inc phase)}]
+        [[:db/retract scene-id :initiative/played]
+         [:db/retract scene-id :initiative/turn]
+         {:db/id scene-id
+          :initiative/phase 0
+          :initiative/rounds (inc rounds)}]))))
 
 (defmethod event-tx-fn :initiative/mark
   [data _ id]
@@ -755,6 +760,19 @@
         (let [{:keys [initiative/health]} (ds/entity data id)]
           [{:db/id id :initiative/health (f health parsed)}]))))
 
+(defmethod event-tx-fn :initiative/change-declared-action
+  [_ _ id action]
+  (if (or (nil? action) (= action ""))
+    [[:db/retract id :initiative/declared-action]]
+    [{:db/id id :initiative/declared-action action}]))
+
+(defmethod event-tx-fn :initiative/change-defence
+  [data _ id f value]
+  (let [parsed (.parseFloat js/window value)]
+    (if (.isNaN js/Number parsed) []
+        (let [{:keys [initiative/defence]} (ds/entity data id)]
+          [{:db/id id :initiative/defence (f defence parsed)}]))))
+
 (defmethod event-tx-fn :initiative/leave
   [data]
   (let [user (ds/entity data [:db/ident :user])
@@ -763,11 +781,14 @@
            [[:db/retract (:db/id scene) :scene/initiative]
             [:db/retract (:db/id scene) :initiative/turn]
             [:db/retract (:db/id scene) :initiative/played]
-            [:db/retract (:db/id scene) :initiative/rounds]]
+            [:db/retract (:db/id scene) :initiative/rounds]
+            [:db/retract (:db/id scene) :initiative/phase]]
            (for [{id :db/id} (:scene/initiative scene)]
              [[:db/retract id :initiative/roll]
               [:db/retract id :initiative/health]
-              [:db/retract id :initiative/suffix]]))))
+              [:db/retract id :initiative/suffix]
+              [:db/retract id :initiative/declared-action]
+              [:db/retract id :initiative/defence]]))))
 
 ;; --- Token Images ---
 (defmethod event-tx-fn :token-images/create-many

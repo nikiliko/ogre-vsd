@@ -32,6 +32,15 @@
    {:value :stunned       :icon "stars"}
    {:value :unconscious   :icon "activity"}])
 
+(def ^:private initiative-actions
+  [{:value "Move"         :icon "compass"         :label "Move"}
+   {:value "Melee Attack" :icon "fist"            :label "Melee"}
+   {:value "Range Attack" :icon "lightning-fill"  :label "Ranged"}
+   {:value "Spell: Touch" :icon "magic"           :label "Spell Touch"}
+   {:value "Spell: Range" :icon "stars"           :label "Spell Range"}
+   {:value "Spell: Space" :icon "geo-alt"         :label "Spell Space"}
+   {:value "Wait"         :icon "hourglass-split" :label "Wait"}])
+
 (def ^:private shape-colors
   ["red"   "orange"  "amber"  "yellow" "lime"
    "green" "emerald" "teal"   "cyan"   "sky"
@@ -232,6 +241,37 @@
                    ((:on-change props) :token/change-flag value checked)))})
             ($ icon {:name icon-name})))))))
 
+(defui ^:private initiative-picker
+  [{:keys [in-initiative idxs]}]
+  (let [dispatch (hooks/use-dispatch)
+        [open set-open dropdown] (hooks/use-modal)]
+    ($ :.initiative-picker
+      ($ :button
+        {:type         "button"
+         :data-selected in-initiative
+         :data-tooltip  "Initiative"
+         :on-click
+         (fn []
+           (if in-initiative
+             (dispatch :initiative/toggle idxs false)
+             (set-open not)))}
+        ($ icon {:name "hourglass-split"}))
+      (if open
+        ($ :.initiative-picker-dropdown
+          {:ref dropdown}
+          (for [{icon-name :icon value :value label :label} initiative-actions]
+            ($ :button
+              {:key   value
+               :type  "button"
+               :title value
+               :on-click
+               (fn []
+                 ;; wired to declared action in next step
+                 (dispatch :initiative/toggle idxs true)
+                 (set-open false))}
+              ($ :.initiative-picker-icon ($ icon {:name icon-name}))
+              ($ :span label))))))))
+
 (defui ^:private context-menu-token [props]
   (let [dispatch (hooks/use-dispatch)
         data     (:data props)
@@ -251,13 +291,9 @@
                 :data-tooltip tooltip
                 :on-click #(on-change form)}
                ($ icon {:name icon-name})))
-           (let [on (every? (comp vector? :scene/_initiative) data)]
-             ($ :button
-               {:type "button"
-                :data-selected on
-                :data-tooltip "Initiative"
-                :on-click #(dispatch :initiative/toggle idxs (not on))}
-               ($ icon {:name "hourglass-split"})))
+           ($ initiative-picker
+             {:in-initiative (every? (comp vector? :scene/_initiative) data)
+              :idxs          idxs})
            (let [on (every? (comp boolean :player :token/flags) data)]
              ($ :button
                {:type "button"

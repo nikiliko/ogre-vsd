@@ -4,12 +4,31 @@
             [ogres.app.hooks :as hooks]
             [uix.core :as uix :refer [defui $]]))
 
+;; ── Against the Darkmaster — Tactical Round Sequence phases ─────────────────
+(def ^:private phase-names
+  ["Assessment" "Declaration" "Move Phase"
+   "Spell Phase A" "Range Phase A" "Melee Phase"
+   "Range Phase B" "Spell Phase B" "Other Actions"])
+
+(def ^:private action-options
+  ["Move" "Melee Attack" "Range Attack"
+   "Spell: Touch" "Spell: Range" "Spell: Space" "Wait"])
+
+;; tokens with these declared actions are highlighted in the corresponding phase
+(def ^:private phase-active-actions
+  {2 #{"Move"}
+   3 #{"Spell: Touch" "Spell: Range" "Spell: Space"}
+   4 #{"Range Attack"}
+   5 #{"Melee Attack"}
+   8 #{"Wait"}})
+
 (def ^:private query
   [:user/host
    {:user/camera
     [{:camera/scene
       [:db/id
        :initiative/rounds
+       :initiative/phase
        :initiative/turn
        :initiative/played
        {:scene/initiative
@@ -17,9 +36,10 @@
          :object/hidden
          :token/label
          :token/flags
-         :initiative/roll
          :initiative/suffix
          :initiative/health
+         :initiative/declared-action
+         :initiative/defence
          :camera/_selected
          {:token/image
           [:token-image/url
@@ -31,53 +51,86 @@
   [{:user/camera
     [{:camera/scene
       [{:scene/initiative
-        [:db/id :initiative/roll :token/flags]}
+        [:db/id :token/flags]}
        [:initiative/rounds :default 0]
+       [:initiative/phase  :default 0]
        :initiative/played]}]}])
 
-(def ^:private npc-xf
-  (comp (filter (comp (complement :player) :token/flags))
-        (filter (comp nil? :initiative/roll))))
-
-(defn ^:private initiative-order
+(defn ^:private token-order
+  "Stable insertion order — no initiative rolls in AtD."
   [a b]
-  (let [f (juxt :initiative/roll :db/id)]
-    (compare (f b) (f a))))
+  (compare (:db/id a) (:db/id b)))
 
-(defui ^:private form-dice
+;; ── Declared-action selector ─────────────────────────────────────────────────
+
+(defui ^:private form-action
+  [{:keys [value on-change phase]}]
+  (let [[editing set-editing form] (hooks/use-modal)
+        editable (= phase 1)]
+    ($ :.initiative-token-action
+      {:data-present (some? value)
+       :data-value   (or value "")}
+      ($ :button.initiative-token-action-label
+        {:disabled (not editable)
+         :title    (if editable "Click to set declared action" "")
+         :on-click
+         (fn [event]
+           (.stopPropagation event)
+           (when editable (set-editing not)))}
+        (or value "—"))
+      (if editing
+        ($ :.initiative-token-action-menu
+          {:ref form}
+          (for [action action-options]
+            ($ :button
+              {:key        action
+               :type       "button"
+               :data-active (= action value)
+               :on-click
+               (fn []
+                 (on-change action)
+                 (set-editing false))}
+              action)))))))
+
+;; ── Defence tracker ──────────────────────────────────────────────────────────
+
+(defui ^:private form-defence
   [{:keys [value on-change]}]
   (let [[editing set-editing form] (hooks/use-modal)
         input (uix/use-ref)]
-    ($ :.initiative-token-roll
+    ($ :.initiative-token-defence
       {:data-present (some? value)}
-      ($ :button.initiative-token-roll-control
-        {:on-click
-         (fn [event]
-           (.stopPropagation event)
-           (set-editing not)
-           (.requestAnimationFrame
-            js/window
-            #(if-let [node (deref input)]
-               (.select node))))}
-        (or value \?))
+      ($ :.initiative-token-defence-frame
+        ($ icon {:name "fist" :size 40}))
+      ($ :button.initiative-token-defence-label
+        {:on-click (fn [event] (.stopPropagation event) (set-editing not))}
+        (or value "DEF"))
       (if editing
         ($ :form.initiative-token-form
           {:ref form
-           :data-type "roll"
+           :data-type "defence"
            :on-submit
-           (fn [event]
-             (.preventDefault event)
-             (on-change (.-value (deref input)))
+           (fn []
+             (on-change (fn [_ v] v) (.-value @input))
              (set-editing not))}
           ($ :input.text.text-ghost
-            {:type "number"
-             :ref input
-             :auto-focus true
-             :default-value value
-             :placeholder "Initiative"
-             :aria-label "Initiative roll"})
-          ($ :button {:type "submit"}
-            ($ icon {:name "check"})))))))
+            {:type        "number"
+             :name        "defence"
+             :ref         input
+             :auto-focus  true
+             :placeholder "Defence"
+             :aria-label  "Defence"})
+          (for [[key label f] [["-" "Subtract from" -]
+                               ["+" "Add to" +]
+                               ["=" "Set as" (fn [_ v] v)]]]
+            ($ :button
+              {:key key :type "button" :aria-label label
+               :on-click
+               (fn []
+                 (on-change f (.-value @input))
+                 (set-editing not))} key)))))))
+
+;; ── HP tracker (unchanged from original) ────────────────────────────────────
 
 (defui ^:private form-hp
   [{:keys [value on-change]}]
@@ -99,13 +152,15 @@
              (on-change (fn [_ v] v) (.-value @input))
              (set-editing not))}
           ($ :input.text.text-ghost
-            {:type "number"
-             :name "hitpoints"
-             :ref input
-             :auto-focus true
+            {:type        "number"
+             :name        "hitpoints"
+             :ref         input
+             :auto-focus  true
              :placeholder "Hitpoints"
-             :aria-label "Hitpoints"})
-          (for [[key label f] [["-" "Subtract from" -] ["+" "Add to" +] ["=" "Set as" (fn [_ v] v)]]]
+             :aria-label  "Hitpoints"})
+          (for [[key label f] [["-" "Subtract from" -]
+                               ["+" "Add to" +]
+                               ["=" "Set as" (fn [_ v] v)]]]
             ($ :button
               {:key key :type "button" :aria-label label
                :on-click
@@ -113,27 +168,33 @@
                  (on-change f (.-value @input))
                  (set-editing not))} key)))))))
 
+;; ── Token row ────────────────────────────────────────────────────────────────
+
 (defui ^:private token
   [{:keys [context entity]}]
   (let [dispatch (hooks/use-dispatch)
         {host :user/host
-         {{curr :initiative/turn
-           rnds :initiative/rounds
-           went :initiative/played}
+         {{curr  :initiative/turn
+           phase :initiative/phase
+           rnds  :initiative/rounds
+           went  :initiative/played}
           :camera/scene} :user/camera} context
-        {id :db/id
-         label :token/label
-         flags :token/flags
-         suffix :initiative/suffix
+        {id       :db/id
+         label    :token/label
+         flags    :token/flags
+         suffix   :initiative/suffix
+         declared :initiative/declared-action
          {{hash :image/hash} :image/thumbnail} :token/image} entity
         playing (= (:db/id curr) (:db/id entity))
-        played (boolean (some #{{:db/id id}} went))
-        hidden (and (not host) (:object/hidden entity))]
+        played  (boolean (some #{{:db/id id}} went))
+        hidden  (and (not host) (:object/hidden entity))
+        active  (contains? (get phase-active-actions (or phase 0) #{}) declared)]
     ($ :li.initiative-token
       {:data-playing playing
-       :data-played played
-       :data-hidden hidden
-       :data-type "token"}
+       :data-played  played
+       :data-hidden  hidden
+       :data-active  active
+       :data-type    "token"}
       ($ :button.initiative-token-turn
         {:disabled (or (nil? rnds) (zero? rnds))
          :on-click
@@ -142,13 +203,8 @@
              (dispatch :initiative/unmark id)
              (dispatch :initiative/mark id)))}
         ($ icon {:name "arrow-right-short"}))
-      ($ form-dice
-        {:value (:initiative/roll entity)
-         :on-change
-         (fn [value]
-           (dispatch :initiative/change-roll id value))})
       ($ :.initiative-token-frame
-        {:on-click #(dispatch :objects/select id)
+        {:on-click  #(dispatch :objects/select id)
          :data-player (contains? flags :player)
          :data-hidden hidden}
         (cond hidden \?
@@ -165,98 +221,116 @@
       ($ :.initiative-token-info
         (if (not (blank? label))
           ($ :.initiative-token-label label))
-        ($ :.initiative-token-flags
-          (if (seq flags)
+        ($ form-action
+          {:value     declared
+           :phase     (or phase 0)
+           :on-change (fn [action]
+                        (dispatch :initiative/change-declared-action id action))})
+        (if (seq flags)
+          ($ :.initiative-token-flags
             (join ", " (mapv (comp capitalize name) flags))))
         (if-let [url (:token-image/url (:token/image entity))]
           (if (or host (:image/public (:token/image entity)))
-            (if-let [url (js/URL.parse url)]
+            (if-let [parsed (js/URL.parse url)]
               ($ :a.initiative-token-url
-                {:href (.-href url) :target "_blank"}
-                (str (.-hostname url)
-                     (if (not= (.-pathname url) "/")
-                       (.-pathname url))))
+                {:href (.-href parsed) :target "_blank"}
+                (str (.-hostname parsed)
+                     (if (not= (.-pathname parsed) "/")
+                       (.-pathname parsed))))
               ($ :.initiative-token-url url)))))
+      ($ form-defence
+        {:value     (:initiative/defence entity)
+         :on-change (fn [f v]
+                      (dispatch :initiative/change-defence id f v))})
       (if (or host (contains? flags :player))
         ($ form-hp
-          {:value (:initiative/health entity)
-           :on-change
-           (fn [f v]
-             (dispatch :initiative/change-health id f v))})))))
+          {:value     (:initiative/health entity)
+           :on-change (fn [f v]
+                        (dispatch :initiative/change-health id f v))})))))
+
+;; ── Placeholder row (shown before combat starts) ────────────────────────────
 
 (defui ^:private token-placeholder []
   ($ :li.initiative-token {:data-type "placeholder"}
     ($ :.initiative-token-turn
       ($ icon {:name "arrow-right-short"}))
-    ($ :.initiative-token-roll
-      ($ :.initiative-token-roll-control))
     ($ :.initiative-token-frame
       ($ :.initiative-token-pattern))
     ($ :.initiative-token-info)
+    ($ :.initiative-token-defence
+      ($ :.initiative-token-defence-frame
+        ($ icon {:name "fist" :size 40}))
+      ($ :.initiative-token-defence-label))
     ($ :.initiative-token-health
       ($ :.initiative-token-health-frame
         ($ icon {:name "heart-fill" :size 40}))
       ($ :.initiative-token-health-label))))
 
+;; ── Main panel ───────────────────────────────────────────────────────────────
+
 (defui ^:memo panel []
   (let [dispatch (hooks/use-dispatch)
         result   (hooks/use-query query)
         {{{tokens :scene/initiative
-           rounds :initiative/rounds} :camera/scene}
+           rounds :initiative/rounds
+           phase  :initiative/phase} :camera/scene}
          :user/camera} result]
     ($ :.initiative
       ($ :header
-        ($ :h2 "Initiative")
-        (if (>= rounds 1)
+        ($ :h2 (if (and (>= (or rounds 0) 1) (some? phase))
+                 (get phase-names phase "Initiative")
+                 "Initiative"))
+        (if (>= (or rounds 0) 1)
           ($ :h3 "Round " rounds)))
-      (cond (and (not (seq tokens)) (nil? rounds))
-            ($ :ol.initiative-list.initiative-list-placeholder
-              (for [indx (range 6)]
-                (if (= indx 1)
-                  ($ :.initiative-prompt {:key indx :style {:text-align "center"}}
-                    "Begin initiative by selecting one or more tokens and
-                     clicking the hourglass button.")
-                  ($ token-placeholder {:key indx}))))
-            (and (not (seq tokens)) (>= rounds 1))
-            ($ :.prompt
-              ($ :br)
-              "Initiative is still running but there are no tokens participating."
-              ($ :br)
-              ($ :br)
-              ($ :button.button.button-neutral
-                {:on-click #(dispatch :initiative/leave)} "Leave initiative"))
-            (seq tokens)
-            ($ :ol.initiative-list
-              (for [entity (sort initiative-order tokens)]
-                ($ token {:key (:db/id entity) :entity entity :context result})))))))
+      (cond
+        (and (not (seq tokens)) (nil? rounds))
+        ($ :ol.initiative-list.initiative-list-placeholder
+          (for [indx (range 6)]
+            (if (= indx 1)
+              ($ :.initiative-prompt {:key indx :style {:text-align "center"}}
+                "Begin the Tactical Round by selecting one or more tokens and
+                 clicking the hourglass button.")
+              ($ token-placeholder {:key indx}))))
+
+        (and (not (seq tokens)) (>= (or rounds 0) 1))
+        ($ :.prompt
+          ($ :br)
+          "The round is running but no tokens are in initiative."
+          ($ :br) ($ :br)
+          ($ :button.button.button-neutral
+            {:on-click #(dispatch :initiative/leave)} "Leave initiative"))
+
+        (seq tokens)
+        ($ :ol.initiative-list
+          (for [entity (sort token-order tokens)]
+            ($ token {:key (:db/id entity) :entity entity :context result})))))))
+
+;; ── Action bar (Next Phase, Leave, etc.) ─────────────────────────────────────
 
 (defui ^:memo actions []
   (let [dispatch (hooks/use-dispatch)
         result   (hooks/use-query query-actions)
         {{{rounds :initiative/rounds
-           played :initiative/played
+           phase  :initiative/phase
            tokens :scene/initiative}
           :camera/scene}
          :user/camera} result
         on-quit (uix/use-callback #(dispatch :initiative/leave) [dispatch])
-        on-next (uix/use-callback #(dispatch :initiative/next) [dispatch])]
+        on-next (uix/use-callback #(dispatch :initiative/next)  [dispatch])
+        cur-phase (or phase 0)]
     ($ :<>
       ($ :button.button.button-neutral
         {:disabled (empty? tokens) :on-click on-quit} "Leave")
-      ($ :button.button.button-neutral
-        {:disabled (not (seq (sequence npc-xf tokens)))
-         :on-click #(dispatch :initiative/roll-all)
-         :style {:text-transform "none"}}
-        ($ icon {:name "dice-5-fill" :size 16}) "ROLL NPCs")
-      (cond (not (seq tokens))
-            ($ :button.button.button-neutral
-              {:disabled true} "Next")
-            (<= rounds 0)
-            ($ :button.button.button-primary
-              {:on-click on-next} "Start")
-            (= (count played) (count tokens))
-            ($ :button.button.button-primary
-              {:on-click on-next} "New round")
-            :else
-            ($ :button.button.button-neutral
-              {:on-click on-next} "Next")))))
+      (cond
+        (not (seq tokens))
+        ($ :button.button.button-neutral {:disabled true} "Next Phase")
+
+        (nil? rounds)
+        ($ :button.button.button-primary {:on-click on-next} "Start Round")
+
+        (= cur-phase 8)
+        ($ :button.button.button-primary {:on-click on-next} "New Round")
+
+        :else
+        ($ :button.button.button-neutral {:on-click on-next}
+           (str "→ " (get phase-names (inc cur-phase) "Next")))))))
