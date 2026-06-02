@@ -240,7 +240,10 @@
     ($ :g {:id "scene-grid"}
       ($ :path
         {:d "M -100000 -100000 H 100000 V 100000 H -100000"
-         :fill "url(#grid-pattern)"}))))
+         :fill "url(#grid-pattern)"}))
+    ($ :filter {:id "label-bg" :x "-10%" :y "-20%" :width "120%" :height "140%"}
+      ($ :feFlood {:flood-color "rgba(0,0,0,0.72)" :result "bg"})
+      ($ :feComposite {:in "bg" :in2 "SourceGraphic" :operator "over"}))))
 
 (defn ^:private token-flags [data]
   (let [{[{turn :initiative/turn}] :scene/_initiative} data]
