@@ -296,7 +296,7 @@
       (let [radius (+ (* scale half-size) 2)]
         ($ :circle.scene-token-ring {:style {:r radius}}))
       (if-let [label (token-label data)]
-        ($ :text.scene-token-label {:y (* scale half-size)} label)))))
+        ($ :text.scene-token-label {:y (+ (* scale half-size) 18)} label)))))
 
 (def ^:private tokens-defs-query
   [[:user/host :default true]
