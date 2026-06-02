@@ -1,0 +1,62 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Clojure CLI
+        uses: DeLaGuardo/setup-clojure@12
+        with:
+          cli: latest
+
+      - name: Cache Maven deps
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('deps.edn') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build
+        run: npx shadow-cljs release app
+
+      - name: Prepare release/latest
+        run: |
+          mkdir -p web/release/latest
+          cp -r web/release/cljs-runtime web/release/latest/
+          cp web/release/ogres.app.js web/release/latest/
+          cp web/release/ogres.app.css web/release/latest/
+          if [ -f web/release/icons.svg ]; then cp web/release/icons.svg web/release/latest/; fi
+
+      - name: Deploy to server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.OGRE_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 157.245.221.1 >> ~/.ssh/known_hosts
+          # site/web/ first (marketing assets: manifest, media, styles)
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
+            site/web/ root@157.245.221.1:/home/nikiliko/htdocs/ogre-vsd/
+          # web/ second — its index.html wins at root (VTT bootstrap)
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
+            web/ root@157.245.221.1:/home/nikiliko/htdocs/ogre-vsd/
