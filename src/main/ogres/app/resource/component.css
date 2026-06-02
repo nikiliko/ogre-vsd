@@ -3,7 +3,7 @@
   background-color: var(--color-blues-900);
   border-radius: 3px;
   border: 1px solid var(--color-blues-700);
-  color: white;
+  color: red;
   content: attr(data-tooltip);
   font-size: 11px;
   inset: -20px auto auto auto;
