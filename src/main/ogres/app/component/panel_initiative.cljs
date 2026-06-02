@@ -14,6 +14,17 @@
 (def ^:private action-options
   ["Move" "Spell A" "Range A" "Melee" "Range B" "Spell B" "Wait"])
 
+(def ^:private condition->tooltip
+  {:dying         "Dies in N rounds. Raise HP above -50 or heal the cause to save."
+   :engaged       "Cannot move unless Disengaging or Running Away."
+   :frightened    "Cannot attack source of fear. Must flee. Can still Parry."
+   :held          "-30 CMB & DEF. No movement. Melee vs. Held gains +30. Hand/Short weapons only."
+   :incapacitated "Cannot act or Parry. Melee hits for max damage; attacker picks Crit result."
+   :prone         "-20 CMB, no two-handed weapons. Attackers gain +20. Standing up costs a Full Action."
+   :stunned       "No Full Actions. Parry at half CMB. Attackers gain +20. Ends at Other Actions Phase."
+   :surprised     "Cannot Attack or Parry. Half/Free Actions only. Attackers gain +20, +10 to Crit."
+   :weary         "Half Move, one Action/round. Cannot recover HP or heal Bleeding until removed."})
+
 (def ^:private phase-active-actions
   {2 #{"Move"}
    3 #{"Spell A"}
@@ -358,7 +369,9 @@
         (if (seq flags)
           ($ :.initiative-token-flags
             (for [flag flags]
-              ($ :.initiative-token-flag {:key (name flag)}
+              ($ :.initiative-token-flag
+                {:key          (name flag)
+                 :data-tooltip (get condition->tooltip flag)}
                 (capitalize (name flag))))))
         (if-let [url (:token-image/url (:token/image entity))]
           (if (or host (:image/public (:token/image entity)))
