@@ -46,7 +46,8 @@
    :prone         "tripwire"
    :stunned       "emoji-dizzy"
    :surprised     "exclamation-triangle-fill"
-   :weary         "moon-fill"})
+   :weary             "moon-fill"
+   :positional-bonus  "crosshair"})
 
 (def ^:private phase-active-actions
   {2 #{"Move"} 3 #{"Spell A"} 4 #{"Range A"} 5 #{"Melee"} 6 #{"Range B"} 7 #{"Spell B"} 8 #{"Wait"}})

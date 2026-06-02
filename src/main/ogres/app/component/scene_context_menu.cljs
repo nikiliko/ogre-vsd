@@ -24,7 +24,8 @@
    {:value :prone         :icon "tripwire"}
    {:value :stunned       :icon "emoji-dizzy"}
    {:value :surprised     :icon "exclamation-triangle-fill"}
-   {:value :weary         :icon "moon-fill"}])
+   {:value :weary             :icon "moon-fill"}
+   {:value :positional-bonus :icon "crosshair"}])
 
 (def ^:private initiative-combat-actions
   [{:value "Spell A" :svg "/icons/spell.svg"  :label "Spell Phase A" :abbr "spl" :badge "A"}
