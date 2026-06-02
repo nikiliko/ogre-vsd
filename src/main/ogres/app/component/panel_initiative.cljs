@@ -359,7 +359,9 @@
                            (dispatch :initiative/set-other-action id detail))})
         (if (seq flags)
           ($ :.initiative-token-flags
-            (join ", " (mapv (comp capitalize name) flags))))
+            (for [flag flags]
+              ($ :.initiative-token-flag {:key (name flag)}
+                (capitalize (name flag))))))
         (if-let [url (:token-image/url (:token/image entity))]
           (if (or host (:image/public (:token/image entity)))
             (if-let [parsed (js/URL.parse url)]
