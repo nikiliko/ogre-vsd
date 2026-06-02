@@ -142,8 +142,7 @@
 }
 
 .scene-token-label {
-  fill: white;
-  filter: url(#label-bg);
+  fill: red;
   font-size: 13px;
   pointer-events: none;
   text-anchor: middle;
