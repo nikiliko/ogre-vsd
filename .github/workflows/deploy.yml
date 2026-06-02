@@ -20,11 +20,6 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install Clojure CLI
-        uses: DeLaGuardo/setup-clojure@11
-        with:
-          cli: latest
-
       - name: Cache Maven deps
         uses: actions/cache@v4
         with:
