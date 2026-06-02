@@ -36,6 +36,9 @@ jobs:
       - name: Install npm deps
         run: npm ci
 
+      - name: Build CSS
+        run: npx esbuild src/main/ogres/app/resource/root.css --outfile=web/release/ogres.app.css --loader:.svg=dataurl --bundle --minify
+
       - name: Build
         run: npx shadow-cljs release app
 
