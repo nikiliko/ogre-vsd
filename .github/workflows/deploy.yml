@@ -42,10 +42,11 @@ jobs:
       - name: Prepare release/latest
         run: |
           mkdir -p web/release/latest
-          cp -r web/release/cljs-runtime web/release/latest/
-          cp web/release/ogres.app.js web/release/latest/
-          cp web/release/ogres.app.css web/release/latest/
-          if [ -f web/release/icons.svg ]; then cp web/release/icons.svg web/release/latest/; fi
+          for item in web/release/*; do
+            [ "$(basename "$item")" != "latest" ] && cp -r "$item" web/release/latest/
+          done
+          echo "Contents of web/release/latest:"
+          ls web/release/latest/
 
       - name: Deploy to server
         env:
