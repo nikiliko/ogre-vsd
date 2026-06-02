@@ -27,6 +27,12 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('deps.edn') }}
           restore-keys: ${{ runner.os }}-maven-
 
+      - name: Install Clojure CLI
+        run: |
+          curl -L -O https://github.com/clojure/brew-install/releases/latest/download/linux-install.sh
+          chmod +x linux-install.sh
+          sudo bash linux-install.sh
+
       - name: Install npm deps
         run: npm ci
 
