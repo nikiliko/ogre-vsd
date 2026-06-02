@@ -37,22 +37,16 @@
   #{:grid :ruler :circle :rect :cone :line :poly :mask :note})
 
 (def ^:private condition->icon
-  {:blinded       "eye-slash-fill"
-   :charmed       "arrow-through-heart-fill"
-   :defeaned      "ear-fill"
-   :exhausted     "moon-stars-fill"
+  {:dying         "skull"
+   :engaged       "fist"
    :frightened    "black-cat"
-   :grappled      "fist"
-   :incapacitated "lock-fill"
+   :held          "lock-fill"
+   :incapacitated "slash-lg"
    :initiative    "hourglass-split"
-   :invisible     "incognito"
-   :paralyzed     "cobra"
-   :petrified     "gem"
-   :poisoned      "poison-bottle"
    :prone         "tripwire"
-   :restrained    "cobweb"
-   :stunned       "stars"
-   :unconscious   "activity"})
+   :stunned       "emoji-dizzy"
+   :surprised     "exclamation-triangle-fill"
+   :weary         "moon-fill"})
 
 (def ^:private phase-active-actions
   {2 #{"Move"} 3 #{"Spell A"} 4 #{"Range A"} 5 #{"Melee"} 6 #{"Range B"} 7 #{"Spell B"} 8 #{"Wait"}})

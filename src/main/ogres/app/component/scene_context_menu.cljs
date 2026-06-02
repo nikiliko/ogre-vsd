@@ -16,21 +16,15 @@
         :else     "Unknown"))
 
 (def ^:private token-conditions
-  [{:value :blinded       :icon "eye-slash-fill"}
-   {:value :charmed       :icon "arrow-through-heart-fill"}
-   {:value :defeaned      :icon "ear-fill"}
-   {:value :exhausted     :icon "moon-stars-fill"}
+  [{:value :dying         :icon "skull"}
+   {:value :engaged       :icon "fist"}
    {:value :frightened    :icon "black-cat"}
-   {:value :grappled      :icon "fist"}
-   {:value :incapacitated :icon "lock-fill"}
-   {:value :invisible     :icon "incognito"}
-   {:value :paralyzed     :icon "cobra"}
-   {:value :petrified     :icon "gem"}
-   {:value :poisoned      :icon "poison-bottle"}
+   {:value :held          :icon "lock-fill"}
+   {:value :incapacitated :icon "slash-lg"}
    {:value :prone         :icon "tripwire"}
-   {:value :restrained    :icon "cobweb"}
-   {:value :stunned       :icon "stars"}
-   {:value :unconscious   :icon "activity"}])
+   {:value :stunned       :icon "emoji-dizzy"}
+   {:value :surprised     :icon "exclamation-triangle-fill"}
+   {:value :weary         :icon "moon-fill"}])
 
 (def ^:private initiative-combat-actions
   [{:value "Spell A" :svg "/icons/spell.svg"  :label "Spell Phase A" :abbr "spl" :badge "A"}
