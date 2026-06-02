@@ -199,8 +199,6 @@
         input (uix/use-ref)]
     ($ :.initiative-token-defence
       {:data-present (some? value)}
-      ($ :.initiative-token-defence-frame
-        ($ icon {:name "fist" :size 40}))
       ($ :button.initiative-token-defence-label
         {:on-click (fn [event] (.stopPropagation event) (set-editing not))}
         value)
