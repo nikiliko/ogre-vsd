@@ -81,7 +81,10 @@
                  :value key
                  :checked (and expanded selected)
                  :on-change #(dispatch :user/select-panel key)})
-              ($ icon {:name (:icon data) :size 22}))))
+              (if (= key :initiative)
+                ($ :img {:src "/icons/initiative.svg" :width 22 :height 22
+                         :style {:filter "invert(0.6)"}})
+                ($ icon {:name (:icon data) :size 22})))))
         ($ :li.panel-tabs-control
           {:role "tab" :on-click #(dispatch :user/toggle-panel)}
           ($ :button {:type "button" :aria-label "Collapse or expand"}

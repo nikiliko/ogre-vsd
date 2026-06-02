@@ -689,7 +689,13 @@
               [[:db/retract id :initiative/suffix]
                [:db/retract id :initiative/roll]
                [:db/retract id :initiative/health]
+               [:db/retract id :initiative/bleeding]
                [:db/retract id :initiative/declared-action]
+               [:db/retract id :initiative/also-move]
+               [:db/retract id :initiative/readied]
+               [:db/retract id :initiative/prev-declared-action]
+               [:db/retract id :initiative/prev-also-move]
+               [:db/retract id :initiative/prev-readied]
                [:db/retract id :initiative/defence]
                [:db/retract scene :scene/initiative id]
                [:db/retract scene :initiative/played id]])))))
@@ -706,14 +712,40 @@
       [{:db/id scene-id :initiative/rounds 1 :initiative/phase 0}]
       ;; Advance through the 9 TRS phases (0–8), then wrap to new round
       (if (< phase 8)
-        [[:db/retract scene-id :initiative/played]
-         [:db/retract scene-id :initiative/turn]
-         {:db/id scene-id :initiative/phase (inc phase)}]
-        [[:db/retract scene-id :initiative/played]
-         [:db/retract scene-id :initiative/turn]
-         {:db/id scene-id
-          :initiative/phase 0
-          :initiative/rounds (inc rounds)}]))))
+        (into
+          [[:db/retract scene-id :initiative/played]
+           [:db/retract scene-id :initiative/turn]
+           {:db/id scene-id :initiative/phase (inc phase)}]
+          ;; Clear modification flags when entering Declaration phase
+          (when (= phase 0)
+            (map (fn [{id :db/id}] [:db/retract id :initiative/action-modified])
+                 (:scene/initiative scene))))
+        ;; Round wrap: snapshot declared actions to prev-*, then clear them
+        (into
+          [[:db/retract scene-id :initiative/played]
+           [:db/retract scene-id :initiative/turn]
+           {:db/id scene-id :initiative/phase 0 :initiative/rounds (inc rounds)}]
+          (mapcat
+            (fn [{id    :db/id
+                  dcl   :initiative/declared-action
+                  mv    :initiative/also-move
+                  rdy   :initiative/readied
+                  bleed :initiative/bleeding
+                  hp    :initiative/health}]
+              (concat
+                (if dcl [{:db/id id :initiative/prev-declared-action dcl}]
+                        [[:db/retract id :initiative/prev-declared-action]])
+                (if mv  [{:db/id id :initiative/prev-also-move true}]
+                        [[:db/retract id :initiative/prev-also-move]])
+                (if rdy [{:db/id id :initiative/prev-readied true}]
+                        [[:db/retract id :initiative/prev-readied]])
+                (when (and bleed (pos? bleed) (number? hp))
+                  [{:db/id id :initiative/health (- hp bleed)}])
+                [[:db/retract id :initiative/declared-action]
+                 [:db/retract id :initiative/also-move]
+                 [:db/retract id :initiative/readied]
+                 [:db/retract id :initiative/action-modified]]))
+            (:scene/initiative scene)))))))
 
 (defmethod event-tx-fn :initiative/mark
   [data _ id]
@@ -760,11 +792,49 @@
         (let [{:keys [initiative/health]} (ds/entity data id)]
           [{:db/id id :initiative/health (f health parsed)}]))))
 
+(defmethod event-tx-fn :initiative/change-bleeding
+  [data _ id f value]
+  (let [parsed (.parseFloat js/window value)]
+    (if (.isNaN js/Number parsed) []
+        (let [{:keys [initiative/bleeding]} (ds/entity data id)]
+          (if (zero? (f (or bleeding 0) parsed))
+            [[:db/retract id :initiative/bleeding]]
+            [{:db/id id :initiative/bleeding (max 0 (f (or bleeding 0) parsed))}])))))
+
 (defmethod event-tx-fn :initiative/change-declared-action
-  [_ _ id action]
-  (if (or (nil? action) (= action ""))
-    [[:db/retract id :initiative/declared-action]]
-    [{:db/id id :initiative/declared-action action}]))
+  [data _ id action]
+  (let [entity   (ds/entity data id)
+        scene    (first (:scene/_initiative entity))
+        phase    (or (:initiative/phase scene) 0)
+        in-decl? (= phase 1)]
+    (concat
+      (if (or (nil? action) (= action ""))
+        [[:db/retract id :initiative/declared-action]
+         [:db/retract id :initiative/other-action]]
+        [{:db/id id :initiative/declared-action action}])
+      (when (not= action "Wait")
+        [[:db/retract id :initiative/other-action]])
+      (if in-decl?
+        [[:db/retract id :initiative/action-modified]]
+        [{:db/id id :initiative/action-modified true}]))))
+
+(defmethod event-tx-fn :initiative/set-other-action
+  [_ _ id detail]
+  (if (or (nil? detail) (= detail ""))
+    [[:db/retract id :initiative/other-action]]
+    [{:db/id id :initiative/other-action detail}]))
+
+(defmethod event-tx-fn :initiative/set-also-move
+  [_ _ id also-move?]
+  (if also-move?
+    [{:db/id id :initiative/also-move true}]
+    [[:db/retract id :initiative/also-move]]))
+
+(defmethod event-tx-fn :initiative/set-readied
+  [_ _ id readied?]
+  (if readied?
+    [{:db/id id :initiative/readied true}]
+    [[:db/retract id :initiative/readied]]))
 
 (defmethod event-tx-fn :initiative/change-defence
   [data _ id f value]
@@ -786,8 +856,14 @@
            (for [{id :db/id} (:scene/initiative scene)]
              [[:db/retract id :initiative/roll]
               [:db/retract id :initiative/health]
+              [:db/retract id :initiative/bleeding]
               [:db/retract id :initiative/suffix]
               [:db/retract id :initiative/declared-action]
+              [:db/retract id :initiative/also-move]
+              [:db/retract id :initiative/readied]
+              [:db/retract id :initiative/prev-declared-action]
+              [:db/retract id :initiative/prev-also-move]
+              [:db/retract id :initiative/prev-readied]
               [:db/retract id :initiative/defence]]))))
 
 ;; --- Token Images ---

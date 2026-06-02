@@ -54,6 +54,15 @@
    :stunned       "stars"
    :unconscious   "activity"})
 
+(def ^:private phase-active-actions
+  {2 #{"Move"} 3 #{"Spell A"} 4 #{"Range A"} 5 #{"Melee"} 6 #{"Range B"} 7 #{"Spell B"} 8 #{"Wait"}})
+
+(def ^:private action->icon
+  {"Move"    "/icons/move.svg"
+   "Spell A" "/icons/spell.svg"  "Spell B" "/icons/spell.svg"
+   "Range A" "/icons/ranged.svg" "Range B" "/icons/ranged.svg"
+   "Melee"   "/icons/melee.svg"  "Wait"    "/icons/other_actions.svg"})
+
 (defn ^:private stop-propagation [event]
   (.stopPropagation event))
 
@@ -248,7 +257,7 @@
         exclu #{:player :dead}]
     (take 4 (filter (difference (token-flags data) exclu) order))))
 
-(defui ^:private token [{:keys [node data]}]
+(defui ^:private token [{:keys [node data phase]}]
   (let [radius (- half-size 2)
         scale (/ (:token/size data) 5)
         hash (:image/hash (:image/thumbnail (:token/image data)))
@@ -271,7 +280,18 @@
           ($ :g.scene-token-flags {:key flag :data-flag flag :transform (str "translate(" cx ", " cy ")")}
             ($ :circle {:r 12})
             ($ :g {:transform (str "translate(" -8 ", " -8 ")")}
-              ($ icon {:name (condition->icon flag) :size 16}))))
+              (if (= flag :initiative)
+                (let [declared  (:initiative/declared-action data)
+                      also-move (:initiative/also-move data)
+                      acting?   (contains? (get phase-active-actions phase #{}) declared)
+                      src       (cond
+                                  (= phase 0)                  "/icons/assessment.svg"
+                                  (= phase 1)                  "/icons/declaration.svg"
+                                  (and (= phase 2) also-move)  "/icons/move.svg"
+                                  (and acting? declared)       (get action->icon declared)
+                                  :else                        "/icons/out_of_phase.svg")]
+                  ($ :image {:href src :width 16 :height 16 :style {:filter "brightness(0) invert(1)"}}))
+                ($ icon {:name (condition->icon flag) :size 16})))))
         (if-let [label (token-label data)]
           ($ :text.scene-token-label {:y half-size} label)))
       (let [radius (+ (* scale half-size) 2)]
@@ -281,9 +301,12 @@
   [[:user/host :default true]
    {:user/camera
     [{:camera/scene
-      [{:scene/tokens
+      [[:initiative/phase :default 0]
+       {:scene/tokens
         [:db/id
          [:initiative/suffix :default nil]
+         [:initiative/declared-action :default nil]
+         [:initiative/also-move :default false]
          [:object/point :default vec/zero]
          [:object/hidden :default false]
          [:token/flags :default #{}]
@@ -296,7 +319,9 @@
 
 (defui ^:private tokens-defs []
   (let [result (hooks/use-query tokens-defs-query)
-        tokens (-> result :user/camera :camera/scene :scene/tokens)]
+        scene  (-> result :user/camera :camera/scene)
+        tokens (:scene/tokens scene)
+        phase  (:initiative/phase scene 0)]
     ($ :defs
       ($ :filter {:id "token-status-dead" :filterRes 1 :color-interpolation-filters "sRGB"}
         ($ :feColorMatrix {:in "SourceGraphic" :type "saturate" :values 0 :result "Next"})
@@ -335,7 +360,7 @@
       ($ TransitionGroup {:component nil}
         (for [{id :db/id :as data} tokens :let [node (uix/create-ref)]]
           ($ Transition {:key id :nodeRef node :timeout 240}
-            ($ token {:node node :data data})))))))
+            ($ token {:node node :data data :phase phase})))))))
 
 (def ^:private player-cursors-query
   [{:root/user [{:user/camera [:camera/scene]}]}

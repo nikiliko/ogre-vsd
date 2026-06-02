@@ -125,6 +125,36 @@
                         (ds/db-with tx-data)
                         (as-> data (ds/reset-conn! conn data)))))))) ^:lint/disable [])))
 
+(def ^:private default-tokens
+  [{:url "/tokens/Athelstane.png"   :name "Athelstane"}
+   {:url "/tokens/Deirdre.png"      :name "Deirdre"}
+   {:url "/tokens/Gandrell.png"     :name "Gandrell"}
+   {:url "/tokens/Maedoc.png"       :name "Maedoc"}
+   {:url "/tokens/Mornien.png"      :name "Mornien"}
+   {:url "/tokens/Orc-Chieftan.png" :name "Orc Chieftain"}
+   {:url "/tokens/Orc-Scout.png"    :name "Orc Scout"}
+   {:url "/tokens/Orc-Soldier.png"  :name "Orc Soldier"}
+   {:url "/tokens/Tobold.png"       :name "Tobold"}])
+
+(defui ^:private seed-tokens []
+  (let [conn    (uix/use-context context)
+        publish (events/use-publish)]
+    (uix/use-effect
+     (fn []
+       (let [try-seed!
+             (fn []
+               (let [db   (ds/db conn)
+                     user (ds/entity db [:db/ident :user])
+                     root (ds/entity db [:db/ident :root])]
+                 (when (and (:user/ready user) (not (:root/token-seeded root)))
+                   (ds/transact! conn [[:db/add [:db/ident :root] :root/token-seeded true]])
+                   (publish :image/seed-tokens default-tokens)
+                   true)))]
+         (when-not (try-seed!)
+           (ds/listen! conn :seed-tokens (fn [_] (when (try-seed!) (ds/unlisten! conn :seed-tokens))))
+           (fn [] (ds/unlisten! conn :seed-tokens)))))
+     [])))
+
 (defui provider
   "Provides a DataScript in-memory database to the application and causes
    re-renders when transactions are performed."
@@ -133,6 +163,7 @@
     ($ context {:value conn}
       (if host ($ persistence {:host host}))
       ($ listeners)
+      ($ seed-tokens)
       children)))
 
 (defn use-query

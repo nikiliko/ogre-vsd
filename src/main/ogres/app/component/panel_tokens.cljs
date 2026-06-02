@@ -154,7 +154,7 @@
          {host :user/host} :root/user} result
         [active set-active] (uix/use-state nil)
         [pub prv] (separate :image/public data)
-        data-pub  (into [:default] (reverse pub))
+        data-pub  (vec (reverse pub))
         data-prv  (vec (reverse prv))
         drop-pub  (use-droppable #js {"id" "scope-pub"})
         drop-prv  (use-droppable #js {"id" "scope-prv"})]

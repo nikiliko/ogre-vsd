@@ -32,14 +32,13 @@
    {:value :stunned       :icon "stars"}
    {:value :unconscious   :icon "activity"}])
 
-(def ^:private initiative-actions
-  [{:value "Move"         :icon "compass"         :label "Move"}
-   {:value "Melee Attack" :icon "fist"            :label "Melee"}
-   {:value "Range Attack" :icon "lightning-fill"  :label "Ranged"}
-   {:value "Spell: Touch" :icon "magic"           :label "Spell Touch"}
-   {:value "Spell: Range" :icon "stars"           :label "Spell Range"}
-   {:value "Spell: Space" :icon "geo-alt"         :label "Spell Space"}
-   {:value "Wait"         :icon "hourglass-split" :label "Wait"}])
+(def ^:private initiative-combat-actions
+  [{:value "Spell A" :svg "/icons/spell.svg"  :label "Spell Phase A" :abbr "spl" :badge "A"}
+   {:value "Range A" :svg "/icons/ranged.svg" :label "Range Phase A" :abbr "rng" :badge "A"}
+   {:value "Melee"   :svg "/icons/melee.svg"  :label "Melee Phase"   :abbr "mel" :badge nil}
+   {:value "Range B" :svg "/icons/ranged.svg" :label "Range Phase B" :abbr "rng" :badge "B"}
+   {:value "Spell B" :svg "/icons/spell.svg"  :label "Spell Phase B" :abbr "spl" :badge "B"}
+   {:value "Wait"    :svg "/icons/other_actions.svg" :label "Other Actions" :abbr "oth" :badge nil}])
 
 (def ^:private shape-colors
   ["red"   "orange"  "amber"  "yellow" "lime"
@@ -241,41 +240,144 @@
                    ((:on-change props) :token/change-flag value checked)))})
             ($ icon {:name icon-name})))))))
 
+(def ^:private query-phase
+  [{:user/camera [{:camera/scene [[:initiative/phase :default nil]
+                                  {:scene/initiative [:db/id]}]}]}])
+
 (defui ^:private initiative-picker
-  [{:keys [in-initiative idxs]}]
-  (let [dispatch (hooks/use-dispatch)
-        [open set-open dropdown] (hooks/use-modal)]
+  [{:keys [idxs]}]
+  (let [phase-result  (hooks/use-query query-phase)
+        scene         (get-in phase-result [:user/camera :camera/scene])
+        cur-phase     (or (:initiative/phase scene) 0)
+        init-ids      (into #{} (map :db/id) (:scene/initiative scene))
+        in-initiative (and (seq idxs) (every? init-ids idxs))
+        declaration?  (= cur-phase 1)
+        assessment?   (= cur-phase 0)
+        dispatch    (hooks/use-dispatch)
+        [open set-open dropdown] (hooks/use-modal)
+        [move-sel    set-move]    (uix/use-state false)
+        [readied-sel set-readied] (uix/use-state false)
+        move-ref    (uix/use-ref false)
+        readied-ref (uix/use-ref false)
+        commit
+        (fn [action-value also-move?]
+          (dispatch :initiative/toggle idxs true)
+          (doseq [id idxs]
+            (dispatch :initiative/change-declared-action id action-value)
+            (dispatch :initiative/set-also-move id also-move?)
+            (dispatch :initiative/set-readied id (.-current readied-ref))))
+        reset-local
+        (fn []
+          (set! (.-current move-ref) false)
+          (set-move false)
+          (set! (.-current readied-ref) false)
+          (set-readied false))]
+    (uix/use-effect
+     (fn []
+       (when (not open) (reset-local)))
+     [open])
     ($ :.initiative-picker
       ($ :button
-        {:type         "button"
+        {:type          "button"
          :data-selected in-initiative
-         :data-tooltip  "Initiative"
+         :data-phase    (cond assessment?   "assessment"
+                             declaration?  "declaration"
+                             in-initiative "combat"
+                             :else         nil)
+         :data-tooltip  (cond
+                          assessment?
+                          "Declaration phase only. Double-click to force."
+                          (and in-initiative (not declaration?))
+                          "Actions already declared — double-click to modify"
+                          :else "Initiative")
          :on-click
-         (fn []
-           (if in-initiative
-             (dispatch :initiative/toggle idxs false)
+         (fn [event]
+           (.stopPropagation event)
+           (when declaration?
+             (set-open not)))
+         :on-double-click
+         (fn [event]
+           (.stopPropagation event)
+           (when (not declaration?)
              (set-open not)))}
-        ($ icon {:name "hourglass-split"}))
+        ($ :img {:src "/icons/initiative.svg" :alt "Initiative" :aria-hidden true
+                 :style {:width "18px" :height "18px"
+                         :opacity (cond assessment?                            0.4
+                                        (and in-initiative (not declaration?)) 0.65
+                                        :else                                  1)
+                         :filter (cond
+                                   declaration?
+                                   "invert(0.3) sepia(1) saturate(10) hue-rotate(320deg)"
+                                   assessment?
+                                   "invert(0.6) grayscale(1)"
+                                   (and in-initiative (not declaration?))
+                                   "invert(0.3) sepia(1) saturate(6) hue-rotate(10deg)"
+                                   :else "invert(0.6)")}}))
       (if open
         ($ :.initiative-picker-dropdown
           {:ref dropdown}
-          (for [{icon-name :icon value :value label :label} initiative-actions]
+          ($ :.initiative-picker-row
+            ;; ── Move ──
             ($ :button
-              {:key   value
-               :type  "button"
-               :title value
+              {:type       "button"
+               :title      (if move-sel "Click again to confirm Move only" "Move Phase")
+               :data-state (cond (and move-sel readied-sel) "combined"
+                                 move-sel "move"
+                                 readied-sel "combined"
+                                 :else nil)
                :on-click
-               (fn []
-                 ;; wired to declared action in next step
-                 (dispatch :initiative/toggle idxs true)
-                 (set-open false))}
-              ($ :.initiative-picker-icon ($ icon {:name icon-name}))
-              ($ :span label))))))))
+               (fn [event]
+                 (.stopPropagation event)
+                 (if (.-current move-ref)
+                   (do (commit "Move" false)
+                       (reset-local)
+                       (set-open false))
+                   (do (set! (.-current move-ref) true)
+                       (set-move true))))}
+              ($ :img {:src "/icons/move.svg" :alt "Move" :aria-hidden true})
+              ($ :.initiative-picker-abbr "mov"))
+            ($ :.initiative-picker-divider)
+            ;; ── Combat actions ──
+            (for [{svg-src :svg value :value label :label abbr :abbr badge :badge}
+                  initiative-combat-actions]
+              ($ :button
+                {:key        value
+                 :type       "button"
+                 :title      label
+                 :data-state (cond (and move-sel readied-sel) "combined"
+                                   move-sel "combined"
+                                   readied-sel "combined"
+                                   :else nil)
+                 :on-click
+                 (fn []
+                   (commit value (.-current move-ref))
+                   (reset-local)
+                   (set-open false))}
+                (if badge ($ :.initiative-picker-badge badge))
+                ($ :img {:src svg-src :alt label :aria-hidden true})
+                ($ :.initiative-picker-abbr abbr)))
+            ;; ── Readied separator + button ──
+            ($ :.initiative-picker-divider-thick)
+            ($ :button
+              {:type       "button"
+               :title      (if readied-sel "Select the action to ready" "Readied Action")
+               :data-state (if readied-sel "readied" nil)
+               :on-click
+               (fn [event]
+                 (.stopPropagation event)
+                 (let [new-val (not (.-current readied-ref))]
+                   (set! (.-current readied-ref) new-val)
+                   (set-readied new-val)))}
+              ($ icon {:name "hourglass-split"})
+              ($ :.initiative-picker-abbr "rdy")))
+          (if readied-sel
+            ($ :.initiative-picker-hint "Select the action to ready")))))))
 
 (defui ^:private context-menu-token [props]
   (let [dispatch (hooks/use-dispatch)
         data     (:data props)
-        idxs     (into [] (map :db/id) data)]
+        idxs     (into [] (map :db/id) data)
+]
     ($ context-menu-fn
       {:render-toolbar
        (fn [{:keys [selected on-change]}]
@@ -292,8 +394,7 @@
                 :on-click #(on-change form)}
                ($ icon {:name icon-name})))
            ($ initiative-picker
-             {:in-initiative (every? (comp vector? :scene/_initiative) data)
-              :idxs          idxs})
+             {:idxs idxs})
            (let [on (every? (comp boolean :player :token/flags) data)]
              ($ :button
                {:type "button"

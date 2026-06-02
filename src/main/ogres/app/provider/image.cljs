@@ -162,6 +162,31 @@
                  :token-images/create-many
                  [[(create-state-record filename image)
                    (create-state-record filename thumbnail)]] true))))) [write dispatch]))
+    (events/use-subscribe :image/seed-tokens
+      (uix/use-callback
+       (fn [tokens]
+         (doseq [{:keys [url name]} tokens]
+           (-> (js/fetch url)
+               (.then #(.blob %))
+               (.then #(js/createImageBitmap %))
+               (.then
+                (fn [image]
+                  (let [canvas (create-canvas image)]
+                    (js/Promise.all
+                     #js [(js/Promise.resolve name)
+                          (extract-image canvas)
+                          (extract-image (create-thumbnail canvas 256))]))))
+               (.then
+                (fn [images]
+                  (.then
+                   (write :put (create-store-records images))
+                   (constantly images))))
+               (.then
+                (fn [[filename image thumbnail]]
+                  (dispatch
+                   :token-images/create-many
+                   [[(create-state-record filename image)
+                     (create-state-record filename thumbnail)]] true)))))) [write dispatch]))
     (events/use-subscribe :image/cache
       (uix/use-callback
        (fn [image]
