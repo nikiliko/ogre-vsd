@@ -17,7 +17,8 @@
 
 [data-tooltip]:not(:disabled):is(:hover, :focus-visible),
 [data-tooltip]:has(:focus-visible) {
-  z-index: 1;
+  position: relative;
+  z-index: 10;
 }
 
 .pagination {
