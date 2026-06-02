@@ -142,12 +142,12 @@
 }
 
 .scene-token-label {
-  fill: var(--color-black-100);
+  fill: white;
   font-size: 13px;
   paint-order: stroke;
   pointer-events: none;
-  stroke-width: 3px;
-  stroke: var(--color-blues-900);
+  stroke-width: 5px;
+  stroke: rgba(0, 0, 0, 0.85);
   text-anchor: middle;
   text-rendering: optimizeLegibility;
 
