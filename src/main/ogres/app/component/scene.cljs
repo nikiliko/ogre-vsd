@@ -292,10 +292,11 @@
                                   :else                        "/icons/out_of_phase.svg")]
                   ($ :image {:href src :width 16 :height 16 :style {:filter "brightness(0) invert(1)"}}))
                 ($ icon {:name (condition->icon flag) :size 16})))))
-        (if-let [label (token-label data)]
-          ($ :text.scene-token-label {:y half-size} label)))
+)
       (let [radius (+ (* scale half-size) 2)]
-        ($ :circle.scene-token-ring {:style {:r radius}})))))
+        ($ :circle.scene-token-ring {:style {:r radius}}))
+      (if-let [label (token-label data)]
+        ($ :text.scene-token-label {:y (* scale half-size)} label)))))
 
 (def ^:private tokens-defs-query
   [[:user/host :default true]
