@@ -2,6 +2,7 @@
   (:require [clojure.string :refer [capitalize]]
             [ogres.app.component :refer [icon]]
             [ogres.app.component.scene-pattern :refer [pattern]]
+            [ogres.app.context :as context]
             [ogres.app.hooks :as hooks]
             [ogres.app.util :as util]
             [uix.core :as uix :refer [defui $]]))
@@ -214,7 +215,8 @@
 (defui ^:private token-form-conditions
   [props]
   (let [fqs (frequencies (reduce into [] ((:values props) :token/flags [])))
-        ids ((:values props) :db/id)]
+        ids ((:values props) :db/id)
+        [_ set-hovered] (uix/use-context context/condition-hover)]
     (for [{value :value icon-name :icon} token-conditions
           :let [focus (= value (:value (first token-conditions)))
                 state (cond (= (get fqs value 0) 0) false
@@ -222,7 +224,11 @@
                             :else :indeterminate)]]
       ($ checkbox {:key value :checked state}
         (fn [input]
-          ($ :label {:aria-label (name value) :data-tooltip (capitalize (name value))}
+          ($ :label
+            {:aria-label      (name value)
+             :data-tooltip    (capitalize (name value))
+             :on-mouse-enter  #(set-hovered value)
+             :on-mouse-leave  #(set-hovered nil)}
             ($ :input
               {:ref input
                :type "checkbox"
