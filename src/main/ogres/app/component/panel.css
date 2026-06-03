@@ -173,6 +173,12 @@
   button {
     flex: 1;
   }
+
+  .button:not(:disabled) {
+    background-color: var(--color-blues-900);
+    border-color: var(--color-blues-900);
+    color: white;
+  }
 }
 
 .form[data-form="props"] .form-footer {
