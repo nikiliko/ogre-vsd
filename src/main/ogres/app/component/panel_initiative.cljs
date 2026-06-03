@@ -657,8 +657,8 @@
     ($ :.initiative
       ($ :header
         ($ :h2 (if (and (>= (or rounds 0) 1) (some? phase))
-                 (get phase-names phase "Initiative")
-                 "Initiative"))
+                 (get phase-names phase "Combat")
+                 "Combat"))
         (if (>= (or rounds 0) 1)
           ($ :h3 "Round " rounds)))
       (cond
