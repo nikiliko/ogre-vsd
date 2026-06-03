@@ -63,4 +63,4 @@
                   ($ :ul {:style {:display "flex" :gap 16}}
                     ($ :li ($ :a {:href "/"} "Home"))
                     ($ :li ($ :a {:href "https://github.com/samcf/ogres/wiki"} "Wiki"))
-                    ($ :li ($ :a {:href "https://github.com/samcf/ogres/discussions"} "Support"))))))))))))
+                    ($ :li ($ :a {:href "https://github.com/samcf/ogres/discussions"} "Support")))))))))))
