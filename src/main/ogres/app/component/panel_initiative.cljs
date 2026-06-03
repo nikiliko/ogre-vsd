@@ -303,7 +303,7 @@
 ;; ── Token row ────────────────────────────────────────────────────────────────
 
 (defui ^:private token
-  [{:keys [context entity]}]
+  [{:keys [context entity on-condition-hover]}]
   (let [dispatch (hooks/use-dispatch)
         {host :user/host
          {{curr  :initiative/turn
@@ -370,8 +370,9 @@
           ($ :.initiative-token-flags
             (for [flag flags]
               ($ :.initiative-token-flag
-                {:key          (name flag)
-                 :data-tooltip (get condition->tooltip flag)}
+                {:key            (name flag)
+                 :on-mouse-enter #(when on-condition-hover (on-condition-hover flag))
+                 :on-mouse-leave #(when on-condition-hover (on-condition-hover nil))}
                 (capitalize (name flag))))))
         (if-let [url (:token-image/url (:token/image entity))]
           (if (or host (:image/public (:token/image entity)))
@@ -644,6 +645,7 @@
 (defui ^:memo panel []
   (let [dispatch  (hooks/use-dispatch)
         result    (hooks/use-query query)
+        [hovered set-hovered] (uix/use-state nil)
         {{{tokens       :scene/initiative
            scene-tokens :scene/tokens
            rounds :initiative/rounds
@@ -683,7 +685,7 @@
         ($ :div
           ($ :ol.initiative-list
             (for [entity (sort token-order tokens)]
-              ($ token {:key (:db/id entity) :entity entity :context result})))
+              ($ token {:key (:db/id entity) :entity entity :context result :on-condition-hover set-hovered})))
           ($ section-previous-round {:tokens tokens :clickable false}))
 
         ;; Phases 2-8 — split into acting / waiting
@@ -694,19 +696,25 @@
           ($ :div
             ($ :ol.initiative-list
               (for [entity acting]
-                ($ token {:key (:db/id entity) :entity entity :context result})))
+                ($ token {:key (:db/id entity) :entity entity :context result :on-condition-hover set-hovered})))
             (when (seq waiting)
               ($ :.initiative-section.initiative-section-muted
                 ($ :.initiative-section-header "Not in this phase")
                 ($ :ol.initiative-list
                   (for [entity waiting]
-                    ($ token {:key (:db/id entity) :entity entity :context result})))))))
+                    ($ token {:key (:db/id entity) :entity entity :context result :on-condition-hover set-hovered})))))))
 
         ;; Assessment phase with tokens (rounds = 0 or 1)
         (seq tokens)
         ($ :ol.initiative-list
           (for [entity (sort token-order tokens)]
-            ($ token {:key (:db/id entity) :entity entity :context result})))))))
+            ($ token {:key (:db/id entity) :entity entity :context result :on-condition-hover set-hovered}))))
+      ($ :.initiative-condition-info
+        (if hovered
+          ($ :<>
+            ($ :.initiative-condition-info-name (capitalize (name hovered)))
+            ($ :.initiative-condition-info-desc (get condition->tooltip hovered)))
+          ($ :.initiative-condition-info-placeholder "Hover a condition to see its effect"))))))
 
 ;; ── Actions bar ──────────────────────────────────────────────────────────────
 

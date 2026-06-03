@@ -918,3 +918,33 @@
   justify-content: center;
   width: 100%;
 }
+
+.initiative-condition-info {
+  border-top: 1px solid var(--color-blues-700);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 60px;
+  padding: 10px 12px;
+}
+
+.initiative-condition-info-name {
+  color: var(--color-black-300);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.initiative-condition-info-desc {
+  color: var(--color-blues-100);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.initiative-condition-info-placeholder {
+  color: var(--color-blues-500);
+  font-size: 11px;
+  font-style: italic;
+  margin: auto 0;
+}
