@@ -1,5 +1,6 @@
 (ns ogres.app.component.layout
-  (:require [ogres.app.hooks :as hooks]
+  (:require [ogres.app.context :as context]
+            [ogres.app.hooks :as hooks]
             [ogres.app.component :refer [icon]]
             [ogres.app.component.panel :as panel]
             [ogres.app.component.scene :refer [scene]]
@@ -17,11 +18,13 @@
 
 (defui ^:memo layout []
   (let [result (hooks/use-query query)
+        [hovered set-hovered] (uix/use-state nil)
         {host     :user/host
          ready    :user/ready
          status   :session/status
          expanded :panel/expanded} result
         node (uix/use-context window/context)]
+    ($ (.-Provider context/condition-hover) {:value [hovered set-hovered]}
     (cond (and host ready)
           ($ :.layout
             {:data-user "host" :data-expanded expanded}
@@ -60,4 +63,4 @@
                   ($ :ul {:style {:display "flex" :gap 16}}
                     ($ :li ($ :a {:href "/"} "Home"))
                     ($ :li ($ :a {:href "https://github.com/samcf/ogres/wiki"} "Wiki"))
-                    ($ :li ($ :a {:href "https://github.com/samcf/ogres/discussions"} "Support"))))))))))
+                    ($ :li ($ :a {:href "https://github.com/samcf/ogres/discussions"} "Support"))))))))))))

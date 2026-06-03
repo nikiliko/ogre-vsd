@@ -1,5 +1,6 @@
 (ns ogres.app.component.panel-initiative
   (:require [clojure.string :refer [join capitalize blank?]]
+            [ogres.app.context :as context]
             [ogres.app.component :refer [icon image]]
             [ogres.app.hooks :as hooks]
             [uix.core :as uix :refer [defui $]]))
@@ -646,7 +647,7 @@
 (defui ^:memo panel []
   (let [dispatch  (hooks/use-dispatch)
         result    (hooks/use-query query)
-        [hovered set-hovered] (uix/use-state nil)
+        [hovered set-hovered] (uix/use-context context/condition-hover)
         {{{tokens       :scene/initiative
            scene-tokens :scene/tokens
            rounds :initiative/rounds

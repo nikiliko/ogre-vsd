@@ -4,6 +4,7 @@
             [ogres.app.component.scene-context-menu :refer [context-menu]]
             [ogres.app.component.scene-pattern :refer [pattern]]
             [ogres.app.const :refer [grid-size]]
+            [ogres.app.context :as context]
             [ogres.app.geom :as geom]
             [ogres.app.hooks :as hooks]
             [ogres.app.matrix :as matrix]
@@ -169,8 +170,19 @@
         ($ shape props)))))
 
 (defui ^:private object-token [props]
-  ($ :use
-    {:href (str "#token" (:db/id (:entity props)))}))
+  (let [[_ set-hovered] (uix/use-context context/condition-hover)]
+    ($ :use
+      {:href          (str "#token" (:db/id (:entity props)))
+       :on-mouse-over (fn [e]
+                        (let [path (array-seq (.composedPath e))
+                              flag (some (fn [el]
+                                           (when-let [ds (.-dataset el)]
+                                             (let [f (.-flag ds)]
+                                               (when (and f (not= f js/undefined) (not= f ""))
+                                                 f))))
+                                         path)]
+                          (set-hovered (when flag (keyword flag)))))
+       :on-mouse-leave #(set-hovered nil)})))
 
 (defui ^:private object-note [props]
   (let [dispatch  (hooks/use-dispatch)
