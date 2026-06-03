@@ -23,7 +23,8 @@
    :prone         "-20 CMB, no two-handed weapons. Attackers gain +20. Standing up costs a Full Action."
    :stunned       "No Full Actions. Parry at half CMB. Attackers gain +20. Ends at Other Actions Phase."
    :surprised     "Cannot Attack or Parry. Half/Free Actions only. Attackers gain +20, +10 to Crit."
-   :weary         "Half Move, one Action/round. Cannot recover HP or heal Bleeding until removed."})
+   :weary             "Half Move, one Action/round. Cannot recover HP or heal Bleeding until removed."
+   :positional-bonus  "Attacker's weapon counts one step longer for initiative. Flanking +15: shield only covers one side. Rear +30: target loses all shield DEF."})
 
 (def ^:private phase-active-actions
   {2 #{"Move"}
