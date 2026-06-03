@@ -144,6 +144,25 @@
   }
 }
 
+.form[data-form="scene"] .form-body {
+  background-color: white;
+  background-image: none;
+}
+
+.form[data-form="scene"] .form-body header {
+  background-color: var(--color-blues-900);
+  padding: 10px 12px;
+  text-align: center;
+
+  h2 {
+    color: var(--color-paper-500);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
 .form[data-form="tokens"] .form-body {
   background-color: white;
   background-image: none;
