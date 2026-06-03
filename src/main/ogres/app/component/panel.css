@@ -144,6 +144,14 @@
   }
 }
 
+.form[data-form="lobby"] .form-body header,
+.form[data-form="data"] .form-body header,
+.form[data-form="scene"] .form-body header,
+.form[data-form="props"] .form-body header,
+.form[data-form="tokens"] .form-body header {
+  margin: -8px -8px 8px -8px;
+}
+
 .form[data-form="lobby"] .form-body {
   background-color: white;
   background-image: none;
