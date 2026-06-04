@@ -294,7 +294,7 @@
                   ($ :image {:href src :width 16 :height 16 :style {:filter "brightness(0) invert(1)"}}))
                 (if-let [src (condition->custom-src flag)]
                   ($ :image {:href src :width 16 :height 16 :style {:filter "brightness(0) invert(1)"}})
-                  ($ icon {:name (condition->icon flag) :size 16})))))
+                  ($ icon {:name (condition->icon flag) :size 16}))))))
 )
       (let [radius (+ (* scale half-size) 2)]
         ($ :circle.scene-token-ring {:style {:r radius}}))
