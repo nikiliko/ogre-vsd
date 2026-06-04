@@ -23,7 +23,7 @@
 }
 
 .panel-tabs {
-  background-color: var(--color-blues-900);
+  background-color: black;
   border-radius: 3px 0 0 3px;
   display: flex;
   flex-direction: column;
@@ -56,7 +56,7 @@
   max-height: 65px;
 
   label {
-    background-color: var(--color-blues-500);
+    background-color: black;
     border-color: var(--color-blues-900);
     border-radius: 2px 0 0 2px;
     border-style: solid;
@@ -66,15 +66,15 @@
     width: 100%;
 
     &:has(:checked) {
-      background-color: var(--color-paper-500);
-      color: var(--color-blues-900);
+      background-color: white;
+      color: black;
     }
 
     &:has(input:not(:checked)) {
       cursor: pointer;
 
       &:hover {
-        background-color: var(--color-blues-100);
+        background-color: #444444;
       }
     }
 
