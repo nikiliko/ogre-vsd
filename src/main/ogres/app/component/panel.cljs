@@ -84,7 +84,7 @@
               (if-let [src (get {:initiative "/icons/initiative.svg"
                                  :tokens     "/icons/tokens.svg"
                                  :scene      "/icons/canvas.svg"} key)]
-                ($ :img {:src src :width 22 :height 22
+                ($ :img {:src src :width 30 :height 30
                          :style {:filter "invert(1)"}})
                 ($ icon {:name (:icon data) :size 22})))))
         ($ :li.panel-tabs-control
