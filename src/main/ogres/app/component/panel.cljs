@@ -83,7 +83,7 @@
                  :on-change #(dispatch :user/select-panel key)})
               (if (= key :initiative)
                 ($ :img {:src "/icons/initiative.svg" :width 22 :height 22
-                         :style {:filter "invert(0.6)"}})
+                         :style {:filter "invert(1)"}})
                 ($ icon {:name (:icon data) :size 22})))))
         ($ :li.panel-tabs-control
           {:role "tab" :on-click #(dispatch :user/toggle-panel)}

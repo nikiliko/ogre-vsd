@@ -68,6 +68,8 @@
     &:has(:checked) {
       background-color: white;
       color: black;
+
+      img { filter: invert(0); }
     }
 
     &:has(input:not(:checked)) {
