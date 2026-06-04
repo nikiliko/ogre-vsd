@@ -69,7 +69,7 @@
       background-color: white;
       color: black;
 
-      img { filter: invert(0); }
+      img { filter: invert(0) !important; }
     }
 
     &:has(input:not(:checked)) {
