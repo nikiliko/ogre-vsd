@@ -49,6 +49,9 @@
    :weary             "moon-fill"
    :positional-bonus  "crosshair"})
 
+(def ^:private condition->custom-src
+  {:positional-bonus "/icons/positional-bonus.svg"})
+
 (def ^:private phase-active-actions
   {2 #{"Move"} 3 #{"Spell A"} 4 #{"Range A"} 5 #{"Melee"} 6 #{"Range B"} 7 #{"Spell B"} 8 #{"Wait"}})
 
@@ -289,7 +292,9 @@
                                   (and acting? declared)       (get action->icon declared)
                                   :else                        "/icons/out_of_phase.svg")]
                   ($ :image {:href src :width 16 :height 16 :style {:filter "brightness(0) invert(1)"}}))
-                ($ icon {:name (condition->icon flag) :size 16})))))
+                (if-let [src (condition->custom-src flag)]
+                  ($ :image {:href src :width 16 :height 16 :style {:filter "brightness(0) invert(1)"}})
+                  ($ icon {:name (condition->icon flag) :size 16})))))
 )
       (let [radius (+ (* scale half-size) 2)]
         ($ :circle.scene-token-ring {:style {:r radius}}))

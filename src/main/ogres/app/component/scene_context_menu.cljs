@@ -26,7 +26,7 @@
    {:value :stunned       :icon "emoji-dizzy"}
    {:value :surprised     :icon "exclamation-triangle-fill"}
    {:value :weary             :icon "moon-fill"}
-   {:value :positional-bonus :icon "crosshair"}])
+   {:value :positional-bonus :icon "crosshair" :src "/icons/positional-bonus.svg"}])
 
 (def ^:private initiative-combat-actions
   [{:value "Spell A" :svg "/icons/spell.svg"  :label "Spell Phase A" :abbr "spl" :badge "A"}
@@ -217,7 +217,7 @@
   (let [fqs (frequencies (reduce into [] ((:values props) :token/flags [])))
         ids ((:values props) :db/id)
         [_ set-hovered] (uix/use-context context/condition-hover)]
-    (for [{value :value icon-name :icon} token-conditions
+    (for [{value :value icon-name :icon icon-src :src} token-conditions
           :let [focus (= value (:value (first token-conditions)))
                 state (cond (= (get fqs value 0) 0) false
                             (= (get fqs value 0) (count ids)) true
@@ -239,7 +239,9 @@
                (fn [event]
                  (let [checked (.. event -target -checked)]
                    ((:on-change props) :token/change-flag value checked)))})
-            ($ icon {:name icon-name})))))))
+            (if icon-src
+              ($ :img {:src icon-src :width 20 :height 20 :style {:filter "invert(1)"}})
+              ($ icon {:name icon-name}))))))))
 
 (def ^:private query-phase
   [{:user/camera [{:camera/scene [[:initiative/phase :default nil]
