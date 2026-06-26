@@ -83,7 +83,8 @@
                  :on-change #(dispatch :user/select-panel key)})
               (if-let [src (get {:initiative "/icons/initiative.svg"
                                  :tokens     "/icons/tokens.svg"
-                                 :scene      "/icons/canvas.svg"} key)]
+                                 :scene      "/icons/canvas.svg"
+                                 :lobby      "/icons/lobby.svg"} key)]
                 ($ :img {:src src :width 30 :height 30
                          :style {:filter "invert(1)"}})
                 ($ icon {:name (:icon data) :size 22})))))
